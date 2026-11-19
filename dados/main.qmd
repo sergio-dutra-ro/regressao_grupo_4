@@ -1,0 +1,11 @@
+```{r}
+library(tidyverse)
+library(reglin)
+library(car)
+
+casas <- read.csv("casas.csv")
+glimpse(casas)
+casas <- casas |>
+  mutate(across(where(is.numeric), as.factor))
+sapply(casas, class)
+```
