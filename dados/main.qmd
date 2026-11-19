@@ -223,7 +223,7 @@ bind_rows(
 
 ```
 
-Após a tentativa de aplicar o stepwise encontramos um modelo que, comparado com o modelo básico R² 0,5893585 \\\< R² 0,6495407, foi descartado.
+Após a tentativa de aplicar o stepwise encontramos um modelo que, comparado com o modelo básico $R_1^2 =  0{,}5893585 \leq R_2^2 = 0{,}6495407$, foi descartado.
 
 ```{r}
 set.seed(64)
