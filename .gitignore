@@ -1,4 +1,5 @@
 *.tex
 .Rhistory
+dados/.Rhistory
 *_files
 *.pdf
