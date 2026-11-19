@@ -1,0 +1,24 @@
+Tem nada de útil aqui não, apenas uns testes que eu estava fazendo
+```{r}
+library(tidymodels)
+library(reglin)
+library(car)
+library(GGally)
+library(gridExtra)
+
+tidymodels_prefer()
+
+casas <- read.csv("casas.csv")
+casas <-
+
+set.seed(501)
+casas_split <- initial_split(casas, prop = 0.80)
+casas_train <- training(casas_split)
+casas_test  <-  testing(casas_split)
+```
+
+```{r}
+ggpairs(casas)
+ggpairs(casas_log)
+levels(casas$area_preferencial)
+```
