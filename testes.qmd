@@ -1,0 +1,77 @@
+
+```{r}
+library(tidymodels)
+library(reglin)
+library(car)
+library(GGally)
+library(gridExtra)
+
+tidymodels_prefer()
+
+casas <- read.csv("casas.csv")
+casas
+```
+
+```{r}
+ggpairs(casas)
+
+```
+```{r}
+set.seed(501)
+
+
+casas_split <- initial_split(casas, prop = 0.80)
+casas_train <- training(casas_split)
+casas_test  <-  testing(casas_split)
+dim(casas_train)
+```
+
+```{r}
+lm_model <- 
+  linear_reg() |> 
+  set_engine("lm")
+
+lm_wflow <- 
+  workflow() |> 
+  add_model(lm_model)
+
+lm_wflow <- 
+  lm_wflow |> 
+  add_formula(preco ~ .)
+
+lm_wflow
+```
+
+```{r}
+lm_fit <- fit(lm_wflow, casas_train)
+
+final_lm_res <- last_fit(lm_wflow, casas_split)
+
+fitted_lm_wflow <- extract_workflow(final_lm_res)
+
+fitted_lm_wflow
+```
+
+```{r}
+collect_metrics(final_lm_res)
+```
+
+```{r}
+fit_full <- lm(preco ~ .^2, data = casas_train)
+fit <- lm(preco ~ .,data = casas_train)
+lm_step <- stats::step(
+  fit, 
+  direction = "both", 
+  scope = list(upper=fit_full)
+)
+```
+
+```{r}
+casas_log <- casas |>
+  mutate(area = log(area))
+
+```
+
+```{r}
+summary(lm_step)
+```
