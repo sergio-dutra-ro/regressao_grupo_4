@@ -1,4 +1,4 @@
-preco: preço de venda da casa em dolares canadenses.
+• preco: preço de venda da casa em dolares canadenses.
 • area_lote: tamanho do terreno da propriedade em metros quadrados.
 • quartos: número de quartos.
 • banheiros: número de banheiros completos.
@@ -10,4 +10,4 @@ preco: preço de venda da casa em dolares canadenses.
 • ar_condicionado: a casa possui ar-condicionado central? (sim/não)
 • vagas_garagem: número de vagas de garagem.
 • area_preferencial: a casa está localizada em um bairro de alta preferência na cidade?
-(sim/não
+(sim/não)
