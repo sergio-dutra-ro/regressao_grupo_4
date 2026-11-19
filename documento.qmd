@@ -1,0 +1,103 @@
+---
+title: "Trabalho Análise de Regressão"
+author: "Guilherme Belloni Nogueira"
+format: pdf
+editor: visual
+---
+
+# Trabalho Análise de Regressão
+
+### Bibliotecas
+
+```{r}
+#| echo: false
+library(tidyverse)
+library(GGally)
+library(reglin)
+library(tidymodels)
+```
+
+## 1. Visão Geral
+
+```{r}
+#| echo: false
+setwd("/home/gui/Documentos/tp_analise_regressao")
+dados <- read.csv("casas.csv")
+head(dados)
+```
+
+Recebemos os dados sobre o preço de vendas das casas da cidade de Windsor no Canadá em 1987.
+
+O dataframe possui 12 variáveis com 546 observações, como visualiza-se abaixo os detalhes:
+
+```{r}
+glimpse(dados)
+```
+
+Algumas métricas que podemos extrair dos dados são:
+
+```{r}
+summary(dados)
+```
+
+## 2. Tratamento dos Dados
+
+Antes de começar a análise em si, é fundamental garantir que os dados estão bem estruturados e limpos, isto é, que eles estejam bem padronizados e sem nenhuma anomalia.
+
+### a) Verificar valores faltantes
+
+Não há nenhuma valor faltante nos dados.
+
+```{r}
+#| echo: false
+colSums(is.na(dados))
+
+```
+
+### b) Verificar o domínio dos dados
+
+```{r}
+#| echo: false
+dados <- dados |> filter(quartos >= 0, preco >= 0, area_lote >= 0, banheiros >= 0, andares >= 0, vagas_garagem >= 0)
+
+table(dados$area_preferencial) 
+table(dados$entrada_carro) 
+table(dados$area_recreacao)
+table(dados$aquecimento_gas)
+table(dados$ar_condicionado)
+
+glimpse(dados)
+```
+
+### c) Correção de tipagem
+
+```{r}
+dados <- dados |>
+  mutate(
+    # contínuas -> numeric (double)
+    across(c(preco, area_lote), as.numeric),
+    
+    # contagens -> integer
+    across(c(quartos, banheiros, andares, vagas_garagem), as.integer),
+    
+    # sim/não -> factor, com "não" como referência
+    across(c(entrada_carro, area_recreacao, porao,
+             aquecimento_gas, ar_condicionado, area_preferencial),
+           ~ factor(.x, levels = c("não", "sim")))
+  )
+
+glimpse(dados)
+```
+
+Corrobora-se, dessa maneira, que os dados estão bem estruturados, com o domínio dentro do esperado e as variáveis categóricas dentro dos padrões esperados.
+
+## 3. Modelagem
+
+```{r}
+set.seed(64)
+
+divisao <- initial_split(dados, prop = 0.8)
+
+treino <- training(divisao)
+teste  <- testing(divisao)
+```
