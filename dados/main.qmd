@@ -3,15 +3,15 @@ title: "Trabalho Análise de Regressão"
 author: "Gabriel Bahia Leite, Gabriel Carvalho Gomes, Guilherme Belloni Nogueira, Gustavo Costa Sales, Rafael Lucas Novais da Silva, Sérgio dos Reis"
 format: pdf
 editor: visual
-execute:
-  echo: false
-  warning: false
-  message: false
 ---
+
+# Trabalho Análise de Regressão
 
 ### Bibliotecas
 
 ```{r}
+#| echo: false
+#| message: false
 library(tidyverse)
 library(GGally)
 library(reglin)
@@ -22,9 +22,10 @@ library(gridExtra)
 ## 1. Visão Geral
 
 ```{r}
+#| echo: false
+#| warning: false
 dados <- read.csv("casas.csv")
-knitr::kable(head(dados[, 1:6]))
-knitr::kable(head(dados[, 7:12]))
+head(dados)
 ```
 
 Recebemos os dados sobre o preço de vendas das casas da cidade de Windsor no Canadá em 1987.
@@ -50,6 +51,8 @@ Antes de começar a análise em si, é fundamental garantir que os dados estão 
 Não há nenhuma valor faltante nos dados.
 
 ```{r}
+#| echo: false
+#| warning: false
 colSums(is.na(dados))
 
 ```
@@ -57,6 +60,8 @@ colSums(is.na(dados))
 ### b) Verificar o domínio dos dados
 
 ```{r}
+#| echo: false
+#| warning: false
 dados <- dados |> filter(quartos >= 0, preco >= 0, area_lote >= 0, banheiros >= 0, andares >= 0, vagas_garagem >= 0)
 
 x1 <- table(dados$area_preferencial) 
@@ -79,6 +84,8 @@ ajuste
 ### c) Correção de tipagem
 
 ```{r}
+#| echo: false
+#| warning: false
 dados <- dados |>
   mutate(
     # contínuas -> numeric (double)
@@ -101,7 +108,6 @@ Corrobora-se, dessa maneira, que os dados estão bem estruturados, com o domíni
 ## 3. Modelagem
 
 ```{r}
-#| echo: true
 set.seed(64)
 
 divisao <- initial_split(dados, prop = 0.8)
@@ -121,7 +127,6 @@ lm_fit <- fit(lm_wflow, data = treino)
 ```
 
 ```{r}
-#| echo: true
 fit1 <- extract_fit_engine(lm_fit)
 anova(fit1)
 ggresiduals(fit1)
@@ -130,7 +135,6 @@ ggresiduals(fit1)
 A partir da análise dos gráficos de resíduos percebemos que o modelo proposto não estava adequado, e resolvemos partir para a abordagem seguinte.
 
 ```{r}
-#| echo: true
 log_wflow <- workflow() |>
   add_model(lm_model) |>
   add_formula(log(preco) ~ .)
@@ -143,6 +147,7 @@ ggresiduals(fit2)
 A alteração realizada no modelo indicou uma melhora ao analisar os novos gráficos do resíduo, porém ainda incompleto.
 
 ```{r}
+#| warnig: false
 p1 <- ggplot(dados, aes(x = preco)) + 
   geom_histogram(bins = 50, col= "white")
 
@@ -154,22 +159,24 @@ grid.arrange(p1, p2, ncol = 2)
 ```
 
 ```{r}
-#| echo: true
-fit_log <- lm(log(preco) ~ ., data = treino)
 fit_full <- lm(log(preco) ~ .^2, data = treino)
 
+fit_SQ <- lm(log(preco) ~ . + I(area_lote^2),data = treino)
+anova(fit2, fit_SQ)
+
+
+fit2 <- lm(log(preco) ~ ., data = treino)
+
 fit_step <- stats::step(
-  fit_log,
+  fit2,
   direction = "both",
   scope = list(upper = formula(fit_full)),
   trace = 0
 )
 
-formula(fit_step)
+lm_model <- linear_reg() |>
+  set_engine("lm")
 
-anova(fit_log, fit_step)
-
-# "Convertendo" para um workflow
 log_wflow <- workflow() |>
   add_model(lm_model) |>
   add_formula(log(preco) ~ .)
@@ -178,17 +185,31 @@ step_wflow <- workflow() |>
   add_model(lm_model) |>
   add_formula(formula(fit_step))
 
+ar_gr_wflow <- workflow() |>
+  add_model(lm_model) |>
+  add_formula(log(preco) ~ . + entrada_carro:area_preferencial)
+
+sq_wflow <- workflow() |>
+  add_model(lm_model) |>
+  add_formula(log(preco) ~ . + I(area_lote^2))
+
 # Ajuste pelo tidymodels
 res_log  <- last_fit(log_wflow, split = divisao)
 res_step <- last_fit(step_wflow, split = divisao)
+res_ar_gr <- last_fit(ar_gr_wflow, split = divisao)
+res_SQ <- last_fit(sq_wflow, split = divisao)
+
 
 # Tabela para comparação
 bind_rows(
   collect_metrics(res_log)  |> mutate(modelo = "Log Linear"),
-  collect_metrics(res_step) |> mutate(modelo = "Log Stepwise")
+  collect_metrics(res_step) |> mutate(modelo = "Log Stepwise"),
+  collect_metrics(res_ar_gr) |> mutate(modelo = "Log entrada:area_pref"),
+  collect_metrics(res_SQ) |> mutate(modelo = "Log SQ_area")
 ) |>
   select(modelo, .metric, .estimate) |>
   pivot_wider(names_from = .metric, values_from = .estimate)
+
 ```
 
 Após a tentativa de aplicar o stepwise encontramos um modelo que, comparado com o modelo básico, foi descartado.
