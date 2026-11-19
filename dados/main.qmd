@@ -6,7 +6,7 @@ author:
 - Guilherme Belloni Nogueira 
 - Gustavo Costa Sales 
 - Rafael Lucas Novais da Silva
-- Sérgio dos Reis"
+- Sérgio dos Reis
 format: pdf
 editor: visual
 execute:
@@ -14,8 +14,6 @@ execute:
   warning: false
   message: false
 ---
-
-# Trabalho Análise de Regressão
 
 ### Bibliotecas
 
@@ -56,7 +54,7 @@ Antes de começar a análise em si, é fundamental garantir que os dados estão 
 
 ### a) Verificar valores faltantes
 
-Não há nenhuma valor faltante nos dados.
+Não há nenhum valor faltante nos dados.
 
 ```{r}
 colSums(is.na(dados))
@@ -76,12 +74,12 @@ x6 <- table(dados$ar_condicionado)
 
 ajuste <- tibble(
   variaveis = c("Não", "Sim"),
-  area_preferencial = x1,
-  entrada_carro = x2,
-  area_recreacao = x3,
-  porao = x4,
-  aquecimento_gas = x5,
-  ar_condicionado = x6
+  area_preferencial = as.numeric(x1),
+  entrada_carro = as.numeric(x2),
+  area_recreacao = as.numeric(x3),
+  porao = as.numeric(x4),
+  aquecimento_gas = as.numeric(x5),
+  ar_condicionado = as.numeric(x6)
 )
 knitr::kable(ajuste)
 ```
@@ -202,6 +200,22 @@ log_log_wflow <-workflow() |>
   add_model(lm_model) |>
   add_formula(log(preco) ~ . - area_lote + log(area_lote))
 
+set.seed(64)
+folds <- vfold_cv(treino, v = 10)
+
+cv_res <- bind_rows(
+  fit_resamples(log_wflow,    resamples = folds) |> collect_metrics() |> mutate(modelo = "Log linear"),
+  fit_resamples(step_wflow,   resamples = folds) |> collect_metrics() |> mutate(modelo = "Log stepwise"),
+  fit_resamples(ar_gr_wflow,  resamples = folds) |> collect_metrics() |> mutate(modelo = "Log entrada:area_pref"),
+  fit_resamples(sq_wflow,     resamples = folds) |> collect_metrics() |> mutate(modelo = "Log Sq_area"),
+  fit_resamples(log_log_wflow,   resamples = folds) |> collect_metrics() |> mutate(modelo = "Log log_area")
+  
+) |>
+  select(modelo, .metric, mean, std_err) |>
+  pivot_wider(names_from = .metric, values_from = c(mean, std_err)) |>
+  knitr::kable(digits = 4)
+cv_res
+
 # Ajuste pelo tidymodels
 res_log  <- last_fit(log_wflow, split = divisao)
 res_step <- last_fit(step_wflow, split = divisao)
@@ -220,24 +234,6 @@ bind_rows(
   select(modelo, .metric, .estimate) |>
   pivot_wider(names_from = .metric, values_from = .estimate) |>
   knitr::kable(digits = 4)
-
 ```
 
-Após a tentativa de aplicar o stepwise encontramos um modelo que, comparado com o modelo básico $R_1^2 =  0{,}5893585 \leq R_2^2 = 0{,}6495407$, foi descartado.
-
-```{r}
-set.seed(64)
-folds <- vfold_cv(treino, v = 10)
-
-cv_res <- bind_rows(
-  fit_resamples(log_wflow,    resamples = folds) |> collect_metrics() |> mutate(modelo = "Log linear"),
-  fit_resamples(step_wflow,   resamples = folds) |> collect_metrics() |> mutate(modelo = "Log stepwise"),
-  fit_resamples(ar_gr_wflow,  resamples = folds) |> collect_metrics() |> mutate(modelo = "Log entrada:area_pref"),
-  fit_resamples(sq_wflow,     resamples = folds) |> collect_metrics() |> mutate(modelo = "Log Sq_area"),
-  fit_resamples(log_log_wflow,   resamples = folds) |> collect_metrics() |> mutate(modelo = "Log log_area")
-
-) |>
-  select(modelo, .metric, mean, std_err) |>
-  pivot_wider(names_from = .metric, values_from = c(mean, std_err))
-cv_res
-```
+Após a tentativa de aplicar o stepwise encontramos um modelo que, comparado com o modelo básico R² 0,5893585 \\\< R² 0,6495407, foi descartado.
