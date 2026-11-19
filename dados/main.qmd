@@ -218,3 +218,20 @@ bind_rows(
 ```
 
 Após a tentativa de aplicar o stepwise encontramos um modelo que, comparado com o modelo básico, foi descartado.
+
+```{r}
+set.seed(64)
+folds <- vfold_cv(treino, v = 10)
+
+cv_res <- bind_rows(
+  fit_resamples(log_wflow,    resamples = folds) |> collect_metrics() |> mutate(modelo = "Log linear"),
+  fit_resamples(step_wflow,   resamples = folds) |> collect_metrics() |> mutate(modelo = "Log stepwise"),
+  fit_resamples(ar_gr_wflow,  resamples = folds) |> collect_metrics() |> mutate(modelo = "Log entrada:area_pref"),
+  fit_resamples(sq_wflow,     resamples = folds) |> collect_metrics() |> mutate(modelo = "Log Sq_area"),
+  fit_resamples(log_log_wflow,   resamples = folds) |> collect_metrics() |> mutate(modelo = "Log log_area")
+
+) |>
+  select(modelo, .metric, mean, std_err) |>
+  pivot_wider(names_from = .metric, values_from = c(mean, std_err))
+cv_res
+```
