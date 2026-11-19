@@ -9,5 +9,4 @@ preco: preço de venda da casa em dolares canadenses.
 • aquecimento_gas: a casa utiliza gás para aquecimento de água? (sim/não)
 • ar_condicionado: a casa possui ar-condicionado central? (sim/não)
 • vagas_garagem: número de vagas de garagem.
-• area_preferencial: a casa está localizada em um bairro de alta preferência na cidade?
-(sim/não
+• area_preferencial: a casa está localizada em um bairro de alta preferência na cidade? (sim/não)
