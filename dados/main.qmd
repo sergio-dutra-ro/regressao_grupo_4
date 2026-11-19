@@ -1,8 +1,18 @@
 ---
 title: "Trabalho Análise de Regressão"
-author: "Gabriel Bahia Leite, Gabriel Carvalho Gomes, Guilherme Belloni Nogueira, Gustavo Costa Sales, Rafael Lucas Novais da Silva, Sérgio dos Reis"
+author: 
+- Gabriel Bahia Leite 
+- Gabriel Carvalho Gomes 
+- Guilherme Belloni Nogueira 
+- Gustavo Costa Sales 
+- Rafael Lucas Novais da Silva
+- Sérgio dos Reis"
 format: pdf
 editor: visual
+execute:
+  echo: false
+  warning: false
+  message: false
 ---
 
 # Trabalho Análise de Regressão
@@ -10,8 +20,7 @@ editor: visual
 ### Bibliotecas
 
 ```{r}
-#| echo: false
-#| message: false
+#| echo: true
 library(tidyverse)
 library(GGally)
 library(reglin)
@@ -22,10 +31,9 @@ library(gridExtra)
 ## 1. Visão Geral
 
 ```{r}
-#| echo: false
-#| warning: false
 dados <- read.csv("casas.csv")
-head(dados)
+knitr::kable(head(dados[, 1:6]))
+knitr::kable(head(dados[, 7:12]))
 ```
 
 Recebemos os dados sobre o preço de vendas das casas da cidade de Windsor no Canadá em 1987.
@@ -51,41 +59,36 @@ Antes de começar a análise em si, é fundamental garantir que os dados estão 
 Não há nenhuma valor faltante nos dados.
 
 ```{r}
-#| echo: false
-#| warning: false
 colSums(is.na(dados))
-
 ```
 
 ### b) Verificar o domínio dos dados
 
 ```{r}
-#| echo: false
-#| warning: false
 dados <- dados |> filter(quartos >= 0, preco >= 0, area_lote >= 0, banheiros >= 0, andares >= 0, vagas_garagem >= 0)
 
 x1 <- table(dados$area_preferencial) 
 x2 <- table(dados$entrada_carro) 
 x3 <- table(dados$area_recreacao)
-x4 <- table(dados$aquecimento_gas)
-x5 <- table(dados$ar_condicionado)
+x4 <- table(dados$porao)
+x5 <- table(dados$aquecimento_gas)
+x6 <- table(dados$ar_condicionado)
 
 ajuste <- tibble(
   variaveis = c("Não", "Sim"),
   area_preferencial = x1,
   entrada_carro = x2,
   area_recreacao = x3,
-  aquecimento_gas = x4,
-  ar_condicionado = x5
+  porao = x4,
+  aquecimento_gas = x5,
+  ar_condicionado = x6
 )
-ajuste
+knitr::kable(ajuste)
 ```
 
 ### c) Correção de tipagem
 
 ```{r}
-#| echo: false
-#| warning: false
 dados <- dados |>
   mutate(
     # contínuas -> numeric (double)
@@ -108,6 +111,7 @@ Corrobora-se, dessa maneira, que os dados estão bem estruturados, com o domíni
 ## 3. Modelagem
 
 ```{r}
+#| echo: true
 set.seed(64)
 
 divisao <- initial_split(dados, prop = 0.8)
@@ -127,6 +131,7 @@ lm_fit <- fit(lm_wflow, data = treino)
 ```
 
 ```{r}
+#| echo: true
 fit1 <- extract_fit_engine(lm_fit)
 anova(fit1)
 ggresiduals(fit1)
@@ -135,11 +140,22 @@ ggresiduals(fit1)
 A partir da análise dos gráficos de resíduos percebemos que o modelo proposto não estava adequado, e resolvemos partir para a abordagem seguinte.
 
 ```{r}
+p1 <- ggplot(dados, aes(x = preco)) + 
+  geom_histogram(bins = 50, col = "white")
+
+p2 <- ggplot(dados, aes(x = log(preco))) +
+  geom_histogram(bins = 50, col = "white")
+
+grid.arrange(p1, p2, ncol = 2)
+```
+
+```{r}
+#| echo: true
 log_wflow <- workflow() |>
   add_model(lm_model) |>
   add_formula(log(preco) ~ .)
 lmlog_fit <- fit(log_wflow, data = treino)
-fit2 <- extract_fit_engine(lmlog_fit, data = treino)
+fit2 <- extract_fit_engine(lmlog_fit)
 anova(fit2)
 ggresiduals(fit2)
 ```
@@ -147,18 +163,7 @@ ggresiduals(fit2)
 A alteração realizada no modelo indicou uma melhora ao analisar os novos gráficos do resíduo, porém ainda incompleto.
 
 ```{r}
-#| warnig: false
-p1 <- ggplot(dados, aes(x = preco)) + 
-  geom_histogram(bins = 50, col= "white")
-
-p2 <- ggplot(dados, aes(x = preco)) +
-  geom_histogram(bins = 50, col = "white") +
-  scale_x_continuous(transform = "log")
-
-grid.arrange(p1, p2, ncol = 2)
-```
-
-```{r}
+#| echo: true
 fit_full <- lm(log(preco) ~ .^2, data = treino)
 
 fit_SQ <- lm(log(preco) ~ . + I(area_lote^2),data = treino)
@@ -213,11 +218,12 @@ bind_rows(
   collect_metrics(res_log_log) |> mutate(modelo = "Log Log_area")
 ) |>
   select(modelo, .metric, .estimate) |>
-  pivot_wider(names_from = .metric, values_from = .estimate)
+  pivot_wider(names_from = .metric, values_from = .estimate) |>
+  knitr::kable(digits = 4)
 
 ```
 
-Após a tentativa de aplicar o stepwise encontramos um modelo que, comparado com o modelo básico, foi descartado.
+Após a tentativa de aplicar o stepwise encontramos um modelo que, comparado com o modelo básico R² 0,5893585 \\\< R² 0,6495407, foi descartado.
 
 ```{r}
 set.seed(64)
