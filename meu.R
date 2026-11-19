@@ -82,3 +82,5 @@ bind_rows(
 ) |>
   select(modelo, .metric, .estimate) |>
   pivot_wider(names_from = .metric, values_from = .estimate)
+
+car::Anova(fit_step, type = 3)
