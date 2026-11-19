@@ -50,7 +50,7 @@ summary(dados)
 
 ## 2. Tratamento dos Dados
 
-Antes de começar a análise em si, é fundamental garantir que os dados estão bem estruturados e limpos, isto é, que eles estejam bem padronizados e sem nenhuma anomalia.
+Antes de começar a análise propriamente dita, é fundamental garantir que os dados estejam bem estruturados e limpos, isto é, que estejam padronizados e sem nenhuma anomalia.
 
 ### a) Verificar valores faltantes
 
@@ -104,7 +104,7 @@ dados <- dados |>
 glimpse(dados)
 ```
 
-Corrobora-se, dessa maneira, que os dados estão bem estruturados, com o domínio dentro do esperado e as variáveis categóricas dentro dos padrões esperados.
+Corrobora-se, dessa maneira, que os dados agora estão bem estruturados, com o domínio dentro do esperado e as variáveis categóricas dentro dos padrões esperados.
 
 ## 3. Modelagem
 
@@ -135,7 +135,7 @@ anova(fit1)
 ggresiduals(fit1)
 ```
 
-A partir da análise dos gráficos de resíduos percebemos que o modelo proposto não estava adequado, e resolvemos partir para a abordagem seguinte.
+A partir da análise dos gráficos de resíduos, percebemos que o modelo proposto não estava adequado, e resolvemos partir para a abordagem seguinte:
 
 ```{r}
 p1 <- ggplot(dados, aes(x = preco)) + 
@@ -236,4 +236,4 @@ bind_rows(
   knitr::kable(digits = 4)
 ```
 
-Após a tentativa de aplicar o stepwise encontramos um modelo que, comparado com o modelo básico R² 0,5893585 \\\< R² 0,6495407, foi descartado.
+Após a tentativa de aplicar o stepwise encontramos um modelo que, comparado com o modelo básico $R^2_1 = 0{,}5893585 \leq R^2_2 =  0,6495407$, foi descartado.
