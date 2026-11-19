@@ -11,16 +11,19 @@ editor: visual
 
 ```{r}
 #| echo: false
+#| message: false
 library(tidyverse)
 library(GGally)
 library(reglin)
 library(tidymodels)
+library(gridExtra)
 ```
 
 ## 1. Visão Geral
 
 ```{r}
 #| echo: false
+#| warning: false
 dados <- read.csv("casas.csv")
 head(dados)
 ```
@@ -49,6 +52,7 @@ Não há nenhuma valor faltante nos dados.
 
 ```{r}
 #| echo: false
+#| warning: false
 colSums(is.na(dados))
 
 ```
@@ -57,6 +61,7 @@ colSums(is.na(dados))
 
 ```{r}
 #| echo: false
+#| warning: false
 dados <- dados |> filter(quartos >= 0, preco >= 0, area_lote >= 0, banheiros >= 0, andares >= 0, vagas_garagem >= 0)
 
 x1 <- table(dados$area_preferencial) 
@@ -79,6 +84,8 @@ ajuste
 ### c) Correção de tipagem
 
 ```{r}
+#| echo: false
+#| warning: false
 dados <- dados |>
   mutate(
     # contínuas -> numeric (double)
@@ -107,4 +114,85 @@ divisao <- initial_split(dados, prop = 0.8)
 
 treino <- training(divisao)
 teste  <- testing(divisao)
+
+lm_model <- linear_reg() |>
+  set_engine("lm")
+
+lm_wflow <- workflow() |>
+  add_model(lm_model) |>
+  add_formula(preco ~ .)
+
+# Ajuste e avaliação
+lm_fit <- fit(lm_wflow, data = treino)
 ```
+
+```{r}
+fit1 <- extract_fit_engine(lm_fit)
+anova(fit1)
+ggresiduals(fit1)
+```
+
+A partir da análise dos gráficos de resíduos percebemos que o modelo proposto não estava adequado, e resolvemos partir para a abordagem seguinte.
+
+```{r}
+log_wflow <- workflow() |>
+  add_model(lm_model) |>
+  add_formula(log(preco) ~ .)
+lmlog_fit <- fit(log_wflow, data = treino)
+fit2 <- extract_fit_engine(lmlog_fit, data = treino)
+anova(fit2)
+ggresiduals(fit2)
+```
+
+A alteração realizada no modelo indicou uma melhora ao analisar os novos gráficos do resíduo, porém ainda incompleto.
+
+```{r}
+#| warnig: false
+p1 <- ggplot(dados, aes(x = preco)) + 
+  geom_histogram(bins = 50, col= "white")
+
+p2 <- ggplot(dados, aes(x = preco)) +
+  geom_histogram(bins = 50, col = "white") +
+  scale_x_continuous(transform = "log")
+
+grid.arrange(p1, p2, ncol = 2)
+```
+
+```{r}
+fit_log <- lm(log(preco) ~ ., data = treino)
+fit_full <- lm(log(preco) ~ .^2, data = treino)
+
+fit_step <- stats::step(
+  fit_log,
+  direction = "both",
+  scope = list(upper = formula(fit_full)),
+  trace = 0
+)
+
+formula(fit_step)
+
+anova(fit_log, fit_step)
+
+# "Convertendo" para um workflow
+log_wflow <- workflow() |>
+  add_model(lm_model) |>
+  add_formula(log(preco) ~ .)
+
+step_wflow <- workflow() |>
+  add_model(lm_model) |>
+  add_formula(formula(fit_step))
+
+# Ajuste pelo tidymodels
+res_log  <- last_fit(log_wflow, split = divisao)
+res_step <- last_fit(step_wflow, split = divisao)
+
+# Tabela para comparação
+bind_rows(
+  collect_metrics(res_log)  |> mutate(modelo = "Log Linear"),
+  collect_metrics(res_step) |> mutate(modelo = "Log Stepwise")
+) |>
+  select(modelo, .metric, .estimate) |>
+  pivot_wider(names_from = .metric, values_from = .estimate)
+```
+
+Após a tentativa de aplicar o stepwise encontramos um modelo que, comparado com o modelo básico, foi descartado.
