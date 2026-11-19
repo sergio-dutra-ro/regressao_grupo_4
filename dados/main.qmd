@@ -59,13 +59,21 @@ colSums(is.na(dados))
 #| echo: false
 dados <- dados |> filter(quartos >= 0, preco >= 0, area_lote >= 0, banheiros >= 0, andares >= 0, vagas_garagem >= 0)
 
-table(dados$area_preferencial) 
-table(dados$entrada_carro) 
-table(dados$area_recreacao)
-table(dados$aquecimento_gas)
-table(dados$ar_condicionado)
+x1 <- table(dados$area_preferencial) 
+x2 <- table(dados$entrada_carro) 
+x3 <- table(dados$area_recreacao)
+x4 <- table(dados$aquecimento_gas)
+x5 <- table(dados$ar_condicionado)
 
-glimpse(dados)
+ajuste <- tibble(
+  variaveis = c("Não", "Sim"),
+  area_preferencial = x1,
+  entrada_carro = x2,
+  area_recreacao = x3,
+  aquecimento_gas = x4,
+  ar_condicionado = x5
+)
+ajuste
 ```
 
 ### c) Correção de tipagem
