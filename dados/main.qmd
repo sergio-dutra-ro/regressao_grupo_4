@@ -21,7 +21,6 @@ library(tidymodels)
 
 ```{r}
 #| echo: false
-setwd("tp_analise_regressao/dados")
 dados <- read.csv("casas.csv")
 head(dados)
 ```
