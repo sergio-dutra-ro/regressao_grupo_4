@@ -24,17 +24,18 @@ library(GGally)
 library(reglin)
 library(tidymodels)
 library(gridExtra)
+library(car)
 ```
 
 ## 1. Visão Geral
+
+O objetivo deste trabalho é analisar, com base nos conhecimentos obtidos na disciplina Analise de Regressão, um banco de dados de preços de vendas das casas da cidade de Windsor no Canadá em 1987.
 
 ```{r}
 dados <- read.csv("casas.csv")
 knitr::kable(head(dados[, 1:6]))
 knitr::kable(head(dados[, 7:12]))
 ```
-
-Recebemos os dados sobre o preço de vendas das casas da cidade de Windsor no Canadá em 1987.
 
 O dataframe possui 12 variáveis com 546 observações, como visualiza-se abaixo os detalhes:
 
@@ -50,7 +51,7 @@ summary(dados)
 
 ## 2. Tratamento dos Dados
 
-Antes de começar a análise propriamente dita, é fundamental garantir que os dados estejam bem estruturados e limpos, isto é, que estejam padronizados e sem nenhuma anomalia.
+Antes de começar a análise em si, é fundamental garantir que os dados estão bem estruturados e limpos, isto é, que eles estejam bem padronizados e sem nenhuma anomalia.
 
 ### a) Verificar valores faltantes
 
@@ -104,9 +105,12 @@ dados <- dados |>
 glimpse(dados)
 ```
 
-Corrobora-se, dessa maneira, que os dados agora estão bem estruturados, com o domínio dentro do esperado e as variáveis categóricas dentro dos padrões esperados.
+Corrobora-se, dessa maneira, que os dados estão bem estruturados, com o domínio dentro do esperado e as variáveis categóricas dentro dos padrões esperados.
 
 ## 3. Modelagem
+
+Nossa modelagem tem como objetivo prever o valor que uma casa será vendida, baseando-se nas demais variáveis.  
+Para o primeiro passo, dividimos os dados entre treino e teste, de forma que os dados de teste não foram útilizados nos treinamentos, afim de avaliar o poder de previsão dos modelos ajustados fora dos dados de treinamento.
 
 ```{r}
 #| echo: true
@@ -120,22 +124,19 @@ teste  <- testing(divisao)
 lm_model <- linear_reg() |>
   set_engine("lm")
 
-lm_wflow <- workflow() |>
-  add_model(lm_model) |>
-  add_formula(preco ~ .)
 
-# Ajuste e avaliação
-lm_fit <- fit(lm_wflow, data = treino)
 ```
+
+O primeiro modelo que ajustamos foi um modelo que utilizava todas as covariáveis para a regressão.
 
 ```{r}
 #| echo: true
-fit1 <- extract_fit_engine(lm_fit)
-anova(fit1)
+fit1 <- lm(preco ~ ., data = treino)
+summary(fit1)
 ggresiduals(fit1)
 ```
 
-A partir da análise dos gráficos de resíduos, percebemos que o modelo proposto não estava adequado, e resolvemos partir para a abordagem seguinte:
+Análisando os gráficos da função `ggresiduals` percebemos que tanto a suposição de normalidade dos dados, quanto homocedasticidade da variância foram violadas, então investigamos a distribuição dos preços.
 
 ```{r}
 p1 <- ggplot(dados, aes(x = preco)) + 
@@ -147,36 +148,59 @@ p2 <- ggplot(dados, aes(x = log(preco))) +
 grid.arrange(p1, p2, ncol = 2)
 ```
 
+Percebemos que a aplicação da função logaritmo corrigia a variância de preço, e melhorava a a normalidade dos dados, então ajustamos um modelo com essa transformação:
+
 ```{r}
 #| echo: true
-log_wflow <- workflow() |>
-  add_model(lm_model) |>
-  add_formula(log(preco) ~ .)
-lmlog_fit <- fit(log_wflow, data = treino)
-fit2 <- extract_fit_engine(lmlog_fit)
-anova(fit2)
+fit2 <- lm(log(preco) ~ ., data = treino)
+summary(fit2)
 ggresiduals(fit2)
 ```
 
-A alteração realizada no modelo indicou uma melhora ao analisar os novos gráficos do resíduo, porém ainda incompleto.
+Através dos gráficos, é possível ver que a violação da homocedasticidade da variância foi corrigida, entretanto continua havendo uma leve violação na normalidade dos erros, após investigar, encontramos um conjunto de covariáveis que ao serem removidas melhoravam o gráfico Normal Q-Q (andares, entrada_carro), mas como já era possível de se dizer que os erros seguiam uma distribuição aproximadamente normal, e essas variáveis foram dadas com relevantes para a regressão pelo teste realizado pela função anova(indicando que carregam informação sobre a variação do preço), optamos por mantê-las.
 
 ```{r}
-#| echo: true
+#| echo: false
+fit_rem <- update(fit2,  . ~ . - andares - entrada_carro)
+ggresiduals(fit_rem)
+anova(fit_rem, fit2)
+```
+
+Após obter este modelo, passamos a investigar possíveis modelos que poderiam trazer um ajuste melhor aos dados, nossa primeira tentativa foi a aplicação do método stepwise, que nos rendeu o modelo com o seguinte preditor linear:
+
+```{r}
+#| echo: false
 fit_full <- lm(log(preco) ~ .^2, data = treino)
-
-fit_SQ <- lm(log(preco) ~ . + I(area_lote^2),data = treino)
-anova(fit2, fit_SQ)
-
-
-fit2 <- lm(log(preco) ~ ., data = treino)
-
 fit_step <- stats::step(
   fit2,
   direction = "both",
   scope = list(upper = formula(fit_full)),
   trace = 0
 )
+anova(fit2, fit_step)
+```
 
+De acordo com o teste F obtido na função anova acima, as interações incluidas pelo stepwise são significativas para o modelo.
+
+Além do modelo obtido com stepwise, também investigamos modelos aplicando funções em area_lote(quadrado, log), e um modelo com uma interação que em nossos testes com a função anova era significante para a regressão:
+
+```{r}
+#| echo: true
+fit_SQ <- lm(log(preco) ~ . + I(area_lote^2),data = treino)
+anova(fit2, fit_SQ)
+ggresiduals(fit_SQ)
+
+fit_entrada_pref <- lm(log(preco) ~ . + entrada_carro:area_preferencial ,data = treino)
+anova(fit2, fit_entrada_pref)
+ggresiduals(fit_entrada_pref)
+
+fit_loglog <- update(fit2, . ~ . - area_lote + log(area_lote))
+ggresiduals(fit_loglog)
+```
+
+Nos gráficos dos resíduos não é possível perceber diferenças significativas entre os modelos, então partimos para compará-los por validação cruzada com auxílio do pacote tidymodels
+
+```{r}
 lm_model <- linear_reg() |>
   set_engine("lm")
 
@@ -216,6 +240,11 @@ cv_res <- bind_rows(
   knitr::kable(digits = 4)
 cv_res
 
+```
+
+Baseando-se na média da Raiz do Erro Quadrático Médio e do $R^2$ obtidos por cada modelo, optamos por prosseguir com o modelo que utiliza log(preco) e log(area_lote), e a seguir, iremos avaliar o seu desempenho, junto com os demais, no conjunto de teste.
+
+```{r}
 # Ajuste pelo tidymodels
 res_log  <- last_fit(log_wflow, split = divisao)
 res_step <- last_fit(step_wflow, split = divisao)
@@ -243,6 +272,7 @@ fit_completo <- fit(log_log_wflow, data = dados) |>
   extract_fit_engine()
 
 summary(fit_completo)
+#Rafael: Acho válido deixar mais claro a sáida do vif, e comentá-la
 vif(fit_completo)
 ggresiduals(fit_completo)
 ```
