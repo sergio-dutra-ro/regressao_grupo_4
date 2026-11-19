@@ -543,23 +543,6 @@ A matriz de correlação (Figura 5) sintetiza a estrutura de dependência linear
 # Modelo de Regressão Múltipla Inicial
 
 <!-- TODO: PARTE 2 — Modelo de Regressão Múltipla Inicial (Integrante 2)
-Escopo detalhado desta seção:
-1. Ajustar o modelo de regressão linear múltipla completo com todas as 11 variáveis explicativas:
-   mod_inicial <- lm(preco ~ area_lote + quartos + banheiros + andares + entrada_carro +
-                     area_recreacao + porao + aquecimento_gas + ar_condicionado +
-                     vagas_garagem + area_preferencial, data = casas)
-   (O dataframe `casas` já está carregado e tratado no ambiente com "não" como referência nos fatores).
-2. Apresentar uma tabela formatada com estimativas dos parâmetros (\hat{\beta}_j), erros-padrão,
-   estatísticas t, p-valores e intervalos de confiança de 95%.
-3. Interpretar tecnicamente os coeficientes estimados:
-   - Intercepto (\hat{\beta}_0) e seu significado prático (ou extrapolação).
-   - Efeito marginal das variáveis quantitativas (ex.: cada m² adicional em `area_lote`, cada banheiro adicional, etc., mantendo as demais variáveis constantes - ceteris paribus).
-   - Efeito das variáveis categóricas binárias (diferença esperada em CAD entre "sim" e "não", ceteris paribus).
-4. Analisar a significância estatística:
-   - Teste F global de significância da regressão (hipóteses H0 e H1, estatística F, graus de liberdade e p-valor).
-   - Testes t parciais individuais (destacar quais variáveis são significativas a 5% e 1%, e comentar o comportamento de `quartos` quando controlado por `banheiros`, `andares` e `area_lote`).
-5. Avaliar a qualidade de ajuste: interpretar o coeficiente de determinação R² e o R² ajustado, além do erro-padrão residual (\hat{\sigma}).
--->
 
 *Seção reservada para o desenvolvimento da Parte 2.*
 
@@ -568,17 +551,7 @@ Escopo detalhado desta seção:
 # Análise de Adequação do Modelo Inicial
 
 <!-- TODO: PARTE 3 — Análise de Adequação do Modelo Inicial (Integrante 3)
-Escopo detalhado desta seção:
-1. Análise de resíduos do `mod_inicial`:
-   - Linearidade e Homocedasticidade: gráfico de Resíduos vs. Valores Ajustados (\hat{y}_i) e Scale-Location (\sqrt{|r_i|} vs. \hat{y}_i), além do teste formal de Breusch-Pagan (`lmtest::bptest`).
-   - Normalidade dos erros: gráfico Q-Q Normal dos resíduos estudentizados e teste formal (ex.: Shapiro-Wilk `shapiro.test`), conectando com a assimetria do preço observada na Parte 1.
-   - Independência / especificação: gráficos de resíduos parciais ou resíduos contra preditores (especialmente `area_lote`).
-2. Diagnóstico de observações atípicas e pontos influentes:
-   - Pontos de alavancagem (leverage h_{ii} > 2p/n ou 3p/n).
-   - Outliers na resposta (resíduos estudentizados externos |t_i| > 2 ou > 3, teste de Bonferroni `car::outlierTest`).
-   - Observações influentes: Distância de Cook (D_i), DFFITS e DFBETAS — identificar os imóveis mais críticos por índice e discutir suas características reais na base `casas`.
-3. Síntese do diagnóstico: concluir quais pressupostos do modelo clássico de regressão linear foram violados (ex.: heterocedasticidade e não-normalidade na cauda superior) e motivar as correções da Parte 4.
--->
+
 
 *Seção reservada para o desenvolvimento da Parte 3.*
 
@@ -587,16 +560,7 @@ Escopo detalhado desta seção:
 # Transformações e Regressão Polinomial
 
 <!-- TODO: PARTE 4 — Transformações e Regressão Polinomial (Integrante 4)
-Escopo detalhado desta seção:
-1. Transformação na variável resposta:
-   - Avaliar a transformação Box-Cox (`MASS::boxcox(mod_inicial)`) ou aplicar diretamente a transformação logarítmica natural \ln(preco) para estabilizar a variância e corrigir a assimetria positiva dos resíduos.
-2. Transformações nos preditores e Regressão Polinomial:
-   - Testar a inclusão de termos polinomiais de 2º grau para `area_lote` (ex.: `poly(area_lote, 2, raw = TRUE)` ou `area_lote + I(area_lote^2)`) e/ou transformação logarítmica `\ln(area_lote)`, conforme a curvatura observada na Figura 4A da Parte 1.
-   - Avaliar a significância do termo quadrático e interpretar o ponto de inflexão/retorno marginal decrescente da área do lote.
-3. Reavaliação do diagnóstico:
-   - Refazer os gráficos de resíduos (Resíduos vs. Ajustados, Q-Q plot) e os testes de homocedasticidade e normalidade para o modelo transformado/polinomial.
-   - Comparar o ajuste e a adequação dos pressupostos antes e depois das transformações.
--->
+
 
 *Seção reservada para o desenvolvimento da Parte 4.*
 
@@ -605,17 +569,7 @@ Escopo detalhado desta seção:
 # Multicolinearidade, Seleção de Variáveis e Somas de Quadrados Extra
 
 <!-- TODO: PARTE 5 — Multicolinearidade, Seleção de Variáveis e Somas de Quadrados Extra (Integrante 5)
-Escopo detalhado desta seção:
-1. Diagnóstico de Multicolinearidade:
-   - Calcular e apresentar os Fatores de Inflação da Variância (`car::vif`) para todas as variáveis explicativas do modelo.
-   - Discutir a relação entre a matriz de correlação da Parte 1 e os valores de VIF obtidos, avaliando se há inflação relevante de variância nos estimadores.
-2. Somas de Quadrados Extra e Testes F Parciais:
-   - Aplicar o princípio da Soma de Quadrados Extra (`anova(mod_reduzido, mod_completo)`) para testar hipóteses conjuntas sobre subconjuntos de variáveis (por exemplo: testar conjuntamente a significância do bloco de variáveis de conforto/acabamento ou testar a exclusão de variáveis individualmente pouco significativas como `quartos` ou `aquecimento_gas`).
-   - Explicar a diferença entre Somas de Quadrados Tipo I (sequencial) e Tipo II/III (`car::Anova`).
-3. Seleção de Variáveis e Comparação de Modelos Candidatos:
-   - Empregar métodos de seleção de variáveis (ex.: Stepwise via AIC e BIC com `step()`, ou comparação de subconjuntos) sobre a melhor especificação funcional obtida na Parte 4.
-   - Apresentar tabela comparativa dos modelos candidatos com R² ajustado, AIC, BIC e erro-padrão residual.
--->
+
 
 *Seção reservada para o desenvolvimento da Parte 5.*
 
@@ -624,16 +578,5 @@ Escopo detalhado desta seção:
 # Validação de Modelos e Conclusões
 
 <!-- TODO: PARTE 6 — Validação de Modelos e Conclusões (Integrante 6)
-Escopo detalhado desta seção:
-1. Esquema de Validação Preditiva com `tidymodels`:
-   - Fixar semente reprodutível (`set.seed(...)`) e realizar a divisão treino/teste (ex.: 80% treino / 20% teste com `rsample::initial_split(casas, prop = 0.8, strata = preco)`).
-   - Definir receitas de pré-processamento (`recipes`) para o(s) modelo(s) de regressão linear (inicial e refinado/transformado) e para o modelo não-paramétrico KNN (`parsnip::nearest_neighbor()` com normalização das numéricas e dummificação das categóricas).
-2. Comparação com KNN via RMSE:
-   - Avaliar o desempenho fora da amostra (conjunto de teste) utilizando RMSE (Root Mean Squared Error), MAE e R² preditivo (`yardstick`).
-   - Nota: caso um dos modelos lineares preveja \ln(preco), reconverter as predições para a escala original em dólares canadenses (CAD) antes de calcular o RMSE de teste para garantir comparação justa com o modelo linear na escala original e com o KNN.
-3. Interpretação Prática e Conclusão Final:
-   - Discutir o trade-off entre interpretabilidade paramétrica (regressão linear) e flexibilidade não-paramétrica (KNN) neste conjunto de dados.
-   - Sintetizar os principais determinantes do preço dos imóveis em Windsor (1987) e encerrar o relatório com as conclusões gerais do grupo.
--->
 
 *Seção reservada para o desenvolvimento da Parte 6.*
