@@ -1,11 +1,20 @@
 ```{r}
 library(tidyverse)
+library(tidymodels)
 library(reglin)
 library(car)
 
 casas <- read.csv("casas.csv")
 glimpse(casas)
 casas <- casas |>
-  mutate(across(where(is.numeric), as.factor))
+  mutate(across(where(is.character), as.factor))
 sapply(casas, class)
+
+
+```
+```{r}
+set.seed(64)
+casas_split <- initial_split(casas, prop = 0.80)
+casas_train <- training(casas_split)
+casas_test  <-  testing(casas_split)
 ```
