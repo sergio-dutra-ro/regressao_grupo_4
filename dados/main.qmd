@@ -193,19 +193,24 @@ sq_wflow <- workflow() |>
   add_model(lm_model) |>
   add_formula(log(preco) ~ . + I(area_lote^2))
 
+log_log_wflow <-workflow() |>
+  add_model(lm_model) |>
+  add_formula(log(preco) ~ . - area_lote + log(area_lote))
+
 # Ajuste pelo tidymodels
 res_log  <- last_fit(log_wflow, split = divisao)
 res_step <- last_fit(step_wflow, split = divisao)
 res_ar_gr <- last_fit(ar_gr_wflow, split = divisao)
 res_SQ <- last_fit(sq_wflow, split = divisao)
-
+res_log_log <- last_fit(log_log_wflow, split = divisao)
 
 # Tabela para comparação
 bind_rows(
   collect_metrics(res_log)  |> mutate(modelo = "Log Linear"),
   collect_metrics(res_step) |> mutate(modelo = "Log Stepwise"),
   collect_metrics(res_ar_gr) |> mutate(modelo = "Log entrada:area_pref"),
-  collect_metrics(res_SQ) |> mutate(modelo = "Log SQ_area")
+  collect_metrics(res_SQ) |> mutate(modelo = "Log SQ_area"),
+  collect_metrics(res_log_log) |> mutate(modelo = "Log Log_area")
 ) |>
   select(modelo, .metric, .estimate) |>
   pivot_wider(names_from = .metric, values_from = .estimate)
