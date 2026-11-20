@@ -9,7 +9,7 @@ Análise econométrica e preditiva dos preços de venda de imóveis residenciais
   - Guilherme Belloni Nogueira
   - Gustavo Costa Sales
   - Rafael Lucas Novais da Silva
-  - Sergio dos Reis
+  - Sérgio dos Reis
 
 ---
 
