@@ -55,11 +55,11 @@ Antes de começar a análise em si, é fundamental garantir que os dados estão 
 
 ### a) Verificar valores faltantes
 
-Não há nenhum valor faltante nos dados.
-
 ```{r}
 colSums(is.na(dados))
 ```
+
+Como podemos ver, não há nenhum valor faltante nos dados.
 
 ### b) Verificar o domínio dos dados
 
@@ -84,6 +84,8 @@ ajuste <- tibble(
 )
 knitr::kable(ajuste)
 ```
+
+Como algumas variáveis possuem valores como "Sim" e "Não", podemos convertê-las em variáveis categóricas.
 
 ### c) Correção de tipagem
 
@@ -110,7 +112,7 @@ Corrobora-se, dessa maneira, que os dados estão bem estruturados, com o domíni
 ## 3. Modelagem
 
 Nossa modelagem tem como objetivo prever o valor que uma casa será vendida, baseando-se nas demais variáveis.\
-Para o primeiro passo, dividimos os dados entre treino e teste, de forma que os dados de teste não foram útilizados nos treinamentos, afim de avaliar o poder de previsão dos modelos ajustados fora dos dados de treinamento.
+Para o primeiro passo, dividimos os dados entre treino e teste, de forma que os dados de teste não foram utilizados nos treinamentos, afim de avaliar o poder de previsão dos modelos ajustados fora dos dados de treinamento.
 
 ```{r}
 #| echo: true
@@ -136,7 +138,7 @@ summary(fit1)
 ggresiduals(fit1)
 ```
 
-Análisando os gráficos da função `ggresiduals` percebemos que tanto a suposição de normalidade dos dados, quanto homocedasticidade da variância foram violadas, então investigamos a distribuição dos preços.
+Analisando os gráficos da função `ggresiduals`, percebemos que as suposições de normalidade dos dados e homocedasticidade da variância foram violadas, então investigamos a distribuição dos preços.
 
 ```{r}
 p1 <- ggplot(dados, aes(x = preco)) + 
@@ -148,7 +150,7 @@ p2 <- ggplot(dados, aes(x = log(preco))) +
 grid.arrange(p1, p2, ncol = 2)
 ```
 
-Percebemos que a aplicação da função logaritmo corrigia a variância de preço, e melhorava a a normalidade dos dados, então ajustamos um modelo com essa transformação:
+Percebemos que a aplicação da função logarítmica na variável resposta `preco` corrigia a variância e melhorava a normalidade dos dados, então ajustamos um modelo com essa transformação:
 
 ```{r}
 #| echo: true
@@ -157,7 +159,9 @@ summary(fit2)
 ggresiduals(fit2)
 ```
 
-Através dos gráficos, é possível ver que a violação da homocedasticidade da variância foi corrigida, entretanto continua havendo uma leve violação na normalidade dos erros, após investigar, encontramos um conjunto de covariáveis que ao serem removidas melhoravam o gráfico Normal Q-Q (andares, entrada_carro), mas como já era possível de se dizer que os erros seguiam uma distribuição aproximadamente normal, e essas variáveis foram dadas com relevantes para a regressão pelo teste realizado pela função anova(indicando que carregam informação sobre a variação do preço), optamos por mantê-las.
+Ao analisar os gráficos, é possível ver que a violação da homocedasticidade da variância foi corrigida, entretanto continua havendo uma leve violação na normalidade dos erros, após investigar, encontramos um conjunto de covariáveis que ao serem removidas melhoravam o gráfico Normal Q-Q (`andares`, `entrada_carro`).
+
+Todavia, como já era possível dizer que os erros seguiam uma distribuição aproximadamente normal, junto com o tamanho amostral $n$ grande, e essas variáveis foram dadas com relevantes para a regressão devido ao teste realizado pela função `anova`(indicando que carregam informação relevante sobre a variação do preço), optamos por mantê-las.
 
 ```{r}
 #| echo: false
@@ -166,7 +170,7 @@ ggresiduals(fit_rem)
 anova(fit_rem, fit2)
 ```
 
-Após obter este modelo, passamos a investigar possíveis modelos que poderiam trazer um ajuste melhor aos dados, nossa primeira tentativa foi a aplicação do método stepwise, que nos rendeu o modelo com o seguinte preditor linear:
+Após obter esta regressão, passamos a investigar possíveis modelos alternativos que poderiam trazer um ajuste melhor aos dados, nossa primeira tentativa foi a aplicação do método stepwise, que nos rendeu o modelo com o seguinte preditor linear:
 
 ```{r}
 #| echo: false
@@ -180,9 +184,9 @@ fit_step <- stats::step(
 anova(fit2, fit_step)
 ```
 
-De acordo com o teste F obtido na função anova acima, as interações incluidas pelo stepwise são significativas para o modelo.
+De acordo com o teste F obtido na função `anova` acima, as interações incluidas pelo stepwise são significativas para o modelo.
 
-Além do modelo obtido com stepwise, também investigamos modelos aplicando funções em area_lote(quadrado, log), e um modelo com uma interação que em nossos testes com a função anova era significante para a regressão:
+Além do preditor obtido com stepwise, também investigamos modelos aplicando funções na covariável `area_lote`(quadrado e log), bem como um modelo com a interação entre `entrada_carro` e `area_preferencial`. Tal interação demonstrou-se significante para a regressão segundo a função `anova`:
 
 ```{r}
 #| echo: true
@@ -198,7 +202,7 @@ fit_loglog <- update(fit2, . ~ . - area_lote + log(area_lote))
 ggresiduals(fit_loglog)
 ```
 
-Nos gráficos dos resíduos não é possível perceber diferenças significativas entre os modelos, então partimos para compará-los por validação cruzada com auxílio do pacote tidymodels
+Nos gráficos dos resíduos não é possível perceber diferenças significativas entre os modelos, então partimos para compará-los por validação cruzada com auxílio do pacote `tidymodels`
 
 ```{r}
 lm_model <- linear_reg() |>
@@ -242,7 +246,9 @@ cv_res
 
 ```
 
-Baseando-se na média da Raiz do Erro Quadrático Médio e do $R^2$ obtidos por cada modelo, optamos por prosseguir com o modelo que utiliza log(preco) e log(area_lote), e a seguir, iremos avaliar o seu desempenho, junto com os demais, no conjunto de teste.
+Baseando-se na média da Raiz do Erro Quadrático Médio e do $R^2$ obtidos por cada modelo, optamos por prosseguir com o modelo cuja variável resposta é `log(preco)` e tinha a covariável `log(area_lote)` no seu preditor linear.
+
+A seguir, iremos avaliar o desempenho do modelo escolhido, junto com os demais, no conjunto de teste.
 
 ```{r}
 # Ajuste pelo tidymodels
@@ -265,7 +271,7 @@ bind_rows(
   knitr::kable(digits = 4)
 ```
 
-Vale ressaltar que a escolha do modelo foi feita a partir da validação cruzada e que a conclusão por meio dos testes seria enviesada, pois ele deixaria de ser independente do processo de seleção. Avaliamos todos os modelos para os dados de teste como uma verificação complementar. Nesse sentido, ajustamos o modelo escolhido na base completa abaixo:
+Vale ressaltar que a escolha do modelo foi feita a partir da validação cruzada e que a conclusão por meio dos testes seria enviesada, pois a conclusão deixaria de ser independente do processo de seleção. Avaliamos todos os modelos para os dados de teste como uma verificação complementar. Nesse sentido, ajustamos o modelo escolhido na base de dados completa abaixo:
 
 ```{r}
 fit_completo <- fit(log_log_wflow, data = dados) |>
@@ -279,7 +285,7 @@ ggresiduals(fit_completo)
 
 ### 3.1 Diagnóstico com Medidas de Influência
 
-Após a análise gráfica dos resíduos de `fit_completo`, notamos que o modelo possui alguns outliers, então decidimos medir o impacto da magnitude desses pontos isolados na predição. Utilizamos abaixo as métricas da **Distância de Cook** e o **COVRATIO**:
+Após a análise gráfica dos resíduos do modelo escolhido (`fit_completo`), decidimos medir o impacto da magnitude das observações isoladas na predição. Utilizamos abaixo as métricas da **Distância de Cook** e o **COVRATIO**:
 
 ```{r}
 cook_dist <- cooks.distance(fit_completo)
@@ -312,14 +318,14 @@ abline(h = lim_superior, col = "red", lty = 2)
 abline(h = lim_inferior, col = "red", lty = 2)
 ```
 
-Como podemos ver pelos gráficos, apesar de alguns valores passarem das da marcas de referência, a magnitude da Distância de Cook está abaixo de \$0{,}035\$, bem longe do limite de 1. Ademais, os valores do COVRATIO continuam bem próximos de 1, tanto para baixo quanto para cima, o que é natural em um conjunto de dados reais do mercado imobiliário.
+Como podemos ver pelos gráficos, apesar de alguns valores passarem das marcas de referência, a magnitude da Distância de Cook está abaixo de 0,035, bem longe do limite de 1. Ademais, os valores do COVRATIO continuam bem próximos de 1, tanto para baixo quanto para cima, o que é natural em um conjunto de dados reais do mercado imobiliário.
 
 Além disso, devido ao tamanho da amostra \$n \> 500\$, o Teorema Central do Limite garante a normalidade assintótica dos estimadores de Mínimos Quadrados, assegurando a confiabilidade do modelo.
 
 ## 4. Conclusão
 
-O modelo inicial, com o preço na escala original, apresentou heterocedasticidade, corrigida com a transformação logarítmica da resposta. Entre as especificações comparadas por validação cruzada, o stepwise com interações mostrou sobreajuste, e a interação entre entrada para carro e área preferencial se mostrou instável por depender de pouquíssimas casas. O modelo escolhido foi o aditivo com log do preço e log da área do lote. Reajustado com a base completa, ele explica 68% da variabilidade do log do preço (R² ajustado de 0,680) e atende aos pressupostos de homocedasticidade, independência e ausência de outliers. O leve desvio de normalidade não compromete a inferência.
+O modelo inicial, com o preço na escala original, apresentou heterocedasticidade, corrigida com a transformação logarítmica da resposta. Entre as especificações comparadas por validação cruzada, o stepwise com interações mostrou sobreajuste, e a interação entre entrada para carro e área preferencial se mostrou instável por depender de pouquíssimas casas. O modelo escolhido foi o aditivo com log do preço e log da área do lote. Reajustado com a base completa, ele explica 68% da variabilidade do log do preço (\$R\^2\$ ajustado de 0,680) e atende aos pressupostos de homocedasticidade, independência e ausência de outliers. O leve desvio de normalidade não compromete a inferência devido.
 
 Todas as covariáveis foram significativas ao nível de 5%. Mantidas as demais constantes, dobrar a área do lote eleva o preço em cerca de 23,4% (elasticidade de 0,303). Os maiores efeitos são os do aquecimento a gás (19,6%), do ar-condicionado central (18,1%), de cada banheiro adicional (18,0%) e da localização em bairro de alta preferência (14,1%). Também contribuem a entrada para carro (11,7%), o porão acabado (11,0%), cada andar adicional (9,6%), a sala de recreação (6,0%), cada vaga de garagem (4,9%) e cada quarto adicional (3,5%).
 
-Na validação cruzada, o modelo escolhido obteve RMSE médio de 0,214 e R² médio de 0,670, contra 0,218 e 0,662 do modelo log linear com a área na escala original, com erro menor em 8 dos 10 folds. Avaliado uma única vez no conjunto de teste, o modelo obteve RMSE de 0,213 na escala logarítmica e R² de 0,665, valores próximos aos da validação cruzada, o que indica boa capacidade de generalização. Na escala original, o erro percentual médio foi de 17,1%, o que corresponde a um erro absoluto médio de cerca de 11.135 dólares canadenses. O modelo é, portanto, adequado tanto para explicar os determinantes do preço quanto para prever o valor de novas casas.
+Na validação cruzada, o modelo escolhido obteve RMSE médio de 0,214 e $R^2$ médio de 0,670, contra 0,218 e 0,662 do modelo log linear com a área na escala original, com erro menor em 8 dos 10 folds. Avaliado uma única vez no conjunto de teste, o modelo obteve RMSE de 0,213 na escala logarítmica e $R^2$ de 0,665, valores próximos aos da validação cruzada, o que indica boa capacidade de generalização. Na escala original, o erro percentual médio foi de 17,1%, o que corresponde a um erro absoluto médio de cerca de 11.135 dólares canadenses. O modelo é, portanto, adequado tanto para explicar os determinantes do preço quanto para prever o valor de novas casas.
