@@ -1,0 +1,325 @@
+---
+title: "Trabalho Análise de Regressão"
+author: 
+- Gabriel Bahia Leite 
+- Gabriel Carvalho Gomes 
+- Guilherme Belloni Nogueira 
+- Gustavo Costa Sales 
+- Rafael Lucas Novais da Silva
+- Sérgio dos Reis
+format: pdf
+editor: visual
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+### Bibliotecas
+
+```{r}
+#| echo: true
+library(tidyverse)
+library(GGally)
+library(reglin)
+library(tidymodels)
+library(gridExtra)
+library(car)
+```
+
+## 1. Visão Geral
+
+O objetivo deste trabalho é analisar, com base nos conhecimentos obtidos na disciplina Analise de Regressão, um banco de dados de preços de vendas das casas da cidade de Windsor no Canadá em 1987.
+
+```{r}
+dados <- read.csv("casas.csv")
+knitr::kable(head(dados[, 1:6]))
+knitr::kable(head(dados[, 7:12]))
+```
+
+O dataframe possui 12 variáveis com 546 observações, como visualiza-se abaixo os detalhes:
+
+```{r}
+glimpse(dados)
+```
+
+Algumas métricas que podemos extrair dos dados são:
+
+```{r}
+summary(dados)
+```
+
+## 2. Tratamento dos Dados
+
+Antes de começar a análise em si, é fundamental garantir que os dados estão bem estruturados e limpos, isto é, que eles estejam bem padronizados e sem nenhuma anomalia.
+
+### a) Verificar valores faltantes
+
+Não há nenhum valor faltante nos dados.
+
+```{r}
+colSums(is.na(dados))
+```
+
+### b) Verificar o domínio dos dados
+
+```{r}
+dados <- dados |> filter(quartos >= 0, preco >= 0, area_lote >= 0, banheiros >= 0, andares >= 0, vagas_garagem >= 0)
+
+x1 <- table(dados$area_preferencial) 
+x2 <- table(dados$entrada_carro) 
+x3 <- table(dados$area_recreacao)
+x4 <- table(dados$porao)
+x5 <- table(dados$aquecimento_gas)
+x6 <- table(dados$ar_condicionado)
+
+ajuste <- tibble(
+  variaveis = c("Não", "Sim"),
+  area_preferencial = as.numeric(x1),
+  entrada_carro = as.numeric(x2),
+  area_recreacao = as.numeric(x3),
+  porao = as.numeric(x4),
+  aquecimento_gas = as.numeric(x5),
+  ar_condicionado = as.numeric(x6)
+)
+knitr::kable(ajuste)
+```
+
+### c) Correção de tipagem
+
+```{r}
+dados <- dados |>
+  mutate(
+    # contínuas -> numeric (double)
+    across(c(preco, area_lote), as.numeric),
+    
+    # contagens -> integer
+    across(c(quartos, banheiros, andares, vagas_garagem), as.integer),
+    
+    # sim/não -> factor, com "não" como referência
+    across(c(entrada_carro, area_recreacao, porao,
+             aquecimento_gas, ar_condicionado, area_preferencial),
+           ~ factor(.x, levels = c("não", "sim")))
+  )
+
+glimpse(dados)
+```
+
+Corrobora-se, dessa maneira, que os dados estão bem estruturados, com o domínio dentro do esperado e as variáveis categóricas dentro dos padrões esperados.
+
+## 3. Modelagem
+
+Nossa modelagem tem como objetivo prever o valor que uma casa será vendida, baseando-se nas demais variáveis.\
+Para o primeiro passo, dividimos os dados entre treino e teste, de forma que os dados de teste não foram útilizados nos treinamentos, afim de avaliar o poder de previsão dos modelos ajustados fora dos dados de treinamento.
+
+```{r}
+#| echo: true
+set.seed(64)
+
+divisao <- initial_split(dados, prop = 0.8)
+
+treino <- training(divisao)
+teste  <- testing(divisao)
+
+lm_model <- linear_reg() |>
+  set_engine("lm")
+
+
+```
+
+O primeiro modelo que ajustamos foi um modelo que utilizava todas as covariáveis para a regressão.
+
+```{r}
+#| echo: true
+fit1 <- lm(preco ~ ., data = treino)
+summary(fit1)
+ggresiduals(fit1)
+```
+
+Análisando os gráficos da função `ggresiduals` percebemos que tanto a suposição de normalidade dos dados, quanto homocedasticidade da variância foram violadas, então investigamos a distribuição dos preços.
+
+```{r}
+p1 <- ggplot(dados, aes(x = preco)) + 
+  geom_histogram(bins = 50, col = "white")
+
+p2 <- ggplot(dados, aes(x = log(preco))) +
+  geom_histogram(bins = 50, col = "white")
+
+grid.arrange(p1, p2, ncol = 2)
+```
+
+Percebemos que a aplicação da função logaritmo corrigia a variância de preço, e melhorava a a normalidade dos dados, então ajustamos um modelo com essa transformação:
+
+```{r}
+#| echo: true
+fit2 <- lm(log(preco) ~ ., data = treino)
+summary(fit2)
+ggresiduals(fit2)
+```
+
+Através dos gráficos, é possível ver que a violação da homocedasticidade da variância foi corrigida, entretanto continua havendo uma leve violação na normalidade dos erros, após investigar, encontramos um conjunto de covariáveis que ao serem removidas melhoravam o gráfico Normal Q-Q (andares, entrada_carro), mas como já era possível de se dizer que os erros seguiam uma distribuição aproximadamente normal, e essas variáveis foram dadas com relevantes para a regressão pelo teste realizado pela função anova(indicando que carregam informação sobre a variação do preço), optamos por mantê-las.
+
+```{r}
+#| echo: false
+fit_rem <- update(fit2,  . ~ . - andares - entrada_carro)
+ggresiduals(fit_rem)
+anova(fit_rem, fit2)
+```
+
+Após obter este modelo, passamos a investigar possíveis modelos que poderiam trazer um ajuste melhor aos dados, nossa primeira tentativa foi a aplicação do método stepwise, que nos rendeu o modelo com o seguinte preditor linear:
+
+```{r}
+#| echo: false
+fit_full <- lm(log(preco) ~ .^2, data = treino)
+fit_step <- stats::step(
+  fit2,
+  direction = "both",
+  scope = list(upper = formula(fit_full)),
+  trace = 0
+)
+anova(fit2, fit_step)
+```
+
+De acordo com o teste F obtido na função anova acima, as interações incluidas pelo stepwise são significativas para o modelo.
+
+Além do modelo obtido com stepwise, também investigamos modelos aplicando funções em area_lote(quadrado, log), e um modelo com uma interação que em nossos testes com a função anova era significante para a regressão:
+
+```{r}
+#| echo: true
+fit_SQ <- lm(log(preco) ~ . + I(area_lote^2),data = treino)
+anova(fit2, fit_SQ)
+ggresiduals(fit_SQ)
+
+fit_entrada_pref <- lm(log(preco) ~ . + entrada_carro:area_preferencial ,data = treino)
+anova(fit2, fit_entrada_pref)
+ggresiduals(fit_entrada_pref)
+
+fit_loglog <- update(fit2, . ~ . - area_lote + log(area_lote))
+ggresiduals(fit_loglog)
+```
+
+Nos gráficos dos resíduos não é possível perceber diferenças significativas entre os modelos, então partimos para compará-los por validação cruzada com auxílio do pacote tidymodels
+
+```{r}
+lm_model <- linear_reg() |>
+  set_engine("lm")
+
+log_wflow <- workflow() |>
+  add_model(lm_model) |>
+  add_formula(log(preco) ~ .)
+
+step_wflow <- workflow() |>
+  add_model(lm_model) |>
+  add_formula(formula(fit_step))
+
+ar_gr_wflow <- workflow() |>
+  add_model(lm_model) |>
+  add_formula(log(preco) ~ . + entrada_carro:area_preferencial)
+
+sq_wflow <- workflow() |>
+  add_model(lm_model) |>
+  add_formula(log(preco) ~ . + I(area_lote^2))
+
+log_log_wflow <-workflow() |>
+  add_model(lm_model) |>
+  add_formula(log(preco) ~ . - area_lote + log(area_lote))
+
+set.seed(64)
+folds <- vfold_cv(treino, v = 10)
+
+cv_res <- bind_rows(
+  fit_resamples(log_wflow,    resamples = folds) |> collect_metrics() |> mutate(modelo = "Log linear"),
+  fit_resamples(step_wflow,   resamples = folds) |> collect_metrics() |> mutate(modelo = "Log stepwise"),
+  fit_resamples(ar_gr_wflow,  resamples = folds) |> collect_metrics() |> mutate(modelo = "Log entrada:area_pref"),
+  fit_resamples(sq_wflow,     resamples = folds) |> collect_metrics() |> mutate(modelo = "Log Sq_area"),
+  fit_resamples(log_log_wflow,   resamples = folds) |> collect_metrics() |> mutate(modelo = "Log log_area")
+  
+) |>
+  select(modelo, .metric, mean, std_err) |>
+  pivot_wider(names_from = .metric, values_from = c(mean, std_err)) |>
+  knitr::kable(digits = 4)
+cv_res
+
+```
+
+Baseando-se na média da Raiz do Erro Quadrático Médio e do $R^2$ obtidos por cada modelo, optamos por prosseguir com o modelo que utiliza log(preco) e log(area_lote), e a seguir, iremos avaliar o seu desempenho, junto com os demais, no conjunto de teste.
+
+```{r}
+# Ajuste pelo tidymodels
+res_log  <- last_fit(log_wflow, split = divisao)
+res_step <- last_fit(step_wflow, split = divisao)
+res_ar_gr <- last_fit(ar_gr_wflow, split = divisao)
+res_SQ <- last_fit(sq_wflow, split = divisao)
+res_log_log <- last_fit(log_log_wflow, split = divisao)
+
+# Tabela para comparação
+bind_rows(
+  collect_metrics(res_log)  |> mutate(modelo = "Log Linear"),
+  collect_metrics(res_step) |> mutate(modelo = "Log Stepwise"),
+  collect_metrics(res_ar_gr) |> mutate(modelo = "Log entrada:area_pref"),
+  collect_metrics(res_SQ) |> mutate(modelo = "Log SQ_area"),
+  collect_metrics(res_log_log) |> mutate(modelo = "Log Log_area")
+) |>
+  select(modelo, .metric, .estimate) |>
+  pivot_wider(names_from = .metric, values_from = .estimate) |>
+  knitr::kable(digits = 4)
+```
+
+Vale ressaltar que a escolha do modelo foi feita a partir da validação cruzada e que a conclusão por meio dos testes seria enviesada, pois ele deixaria de ser independente do processo de seleção. Avaliamos todos os modelos para os dados de teste como uma verificação complementar. Nesse sentido, ajustamos o modelo escolhido na base completa abaixo:
+
+```{r}
+fit_completo <- fit(log_log_wflow, data = dados) |>
+  extract_fit_engine()
+
+summary(fit_completo)
+#Rafael: Acho válido deixar mais claro a sáida do vif, e comentá-la
+vif(fit_completo)
+ggresiduals(fit_completo)
+```
+
+### 3.1 Diagnóstico com Medidas de Influência
+
+Após a análise gráfica dos resíduos de `fit_completo`, notamos que o modelo possui alguns outliers, então decidimos medir o impacto da magnitude desses pontos isolados na predição. Utilizamos abaixo as métricas da **Distância de Cook** e o **COVRATIO**:
+
+```{r}
+cook_dist <- cooks.distance(fit_completo)
+
+plot(cook_dist,
+     main = "Distância de Cook das Observações",
+     xlab = "i-ésima Observação", ylab = "Distância de Cook")
+abline(h = 4/length(cook_dist), col = "red", lty = 2)
+```
+
+Em relação à Distância de Cook \$D_i\$, segundo Montgomery (2012), valores influentes preocupantes seriam de \$D_i \> 1\$.
+
+```{r}
+COVRATIO <- covratio(fit_completo)
+n <- nobs(fit_completo)
+p <- length(coef(fit_completo))
+
+lim_superior <- 1 + (3 * p / n)
+lim_inferior <- 1 - (3 * p / n)
+
+plot(COVRATIO,
+     main = "COVRATIO das Observações",
+     xlab = "i-ésima Observação", 
+     ylab = "COVRATIO")
+
+
+
+abline(h = 1, col = "gray", lty = 3)
+abline(h = lim_superior, col = "red", lty = 2)
+abline(h = lim_inferior, col = "red", lty = 2)
+```
+
+Como podemos ver pelos gráficos, apesar de alguns valores passarem das da marcas de referência, a magnitude da Distância de Cook está abaixo de \$0{,}035\$, bem longe do limite de 1. Ademais, os valores do COVRATIO continuam bem próximos de 1, tanto para baixo quanto para cima, o que é natural em um conjunto de dados reais do mercado imobiliário.
+
+Além disso, devido ao tamanho da amostra \$n \> 500\$, o Teorema Central do Limite garante a normalidade assintótica dos estimadores de Mínimos Quadrados, assegurando a confiabilidade do modelo.
+
+## 4. Conclusão
+
+O modelo inicial, com o preço na escala original, apresentou heterocedasticidade, corrigida com a transformação logarítmica da resposta. Entre as especificações comparadas por validação cruzada, o stepwise com interações mostrou sobreajuste, e a interação entre entrada para carro e área preferencial se mostrou instável por depender de pouquíssimas casas. O modelo escolhido foi o aditivo com log do preço e log da área do lote. Reajustado com a base completa, ele explica 68% da variabilidade do log do preço (R² ajustado de 0,680) e atende aos pressupostos de homocedasticidade, independência e ausência de outliers. O leve desvio de normalidade não compromete a inferência.
+
+Todas as covariáveis foram significativas ao nível de 5%. Mantidas as demais constantes, dobrar a área do lote eleva o preço em cerca de 23,4% (elasticidade de 0,303). Os maiores efeitos são os do aquecimento a gás (19,6%), do ar-condicionado central (18,1%), de cada banheiro adicional (18,0%) e da localização em bairro de alta preferência (14,1%). Também contribuem a entrada para carro (11,7%), o porão acabado (11,0%), cada andar adicional (9,6%), a sala de recreação (6,0%), cada vaga de garagem (4,9%) e cada quarto adicional (3,5%).
+
+Na validação cruzada, o modelo escolhido obteve RMSE médio de 0,214 e R² médio de 0,670, contra 0,218 e 0,662 do modelo log linear com a área na escala original, com erro menor em 8 dos 10 folds. Avaliado uma única vez no conjunto de teste, o modelo obteve RMSE de 0,213 na escala logarítmica e R² de 0,665, valores próximos aos da validação cruzada, o que indica boa capacidade de generalização. Na escala original, o erro percentual médio foi de 17,1%, o que corresponde a um erro absoluto médio de cerca de 11.135 dólares canadenses. O modelo é, portanto, adequado tanto para explicar os determinantes do preço quanto para prever o valor de novas casas.

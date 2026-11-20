@@ -109,7 +109,7 @@ Corrobora-se, dessa maneira, que os dados estão bem estruturados, com o domíni
 
 ## 3. Modelagem
 
-Nossa modelagem tem como objetivo prever o valor que uma casa será vendida, baseando-se nas demais variáveis.  
+Nossa modelagem tem como objetivo prever o valor que uma casa será vendida, baseando-se nas demais variáveis.\
 Para o primeiro passo, dividimos os dados entre treino e teste, de forma que os dados de teste não foram útilizados nos treinamentos, afim de avaliar o poder de previsão dos modelos ajustados fora dos dados de treinamento.
 
 ```{r}
@@ -276,6 +276,45 @@ summary(fit_completo)
 vif(fit_completo)
 ggresiduals(fit_completo)
 ```
+
+### 3.1 Diagnóstico com Medidas de Influência
+
+Após a análise gráfica dos resíduos de `fit_completo`, notamos que o modelo possui alguns outliers, então decidimos medir o impacto da magnitude desses pontos isolados na predição. Utilizamos abaixo as métricas da **Distância de Cook** e o **COVRATIO**:
+
+```{r}
+cook_dist <- cooks.distance(fit_completo)
+
+plot(cook_dist,
+     main = "Distância de Cook das Observações",
+     xlab = "i-ésima Observação", ylab = "Distância de Cook")
+abline(h = 4/length(cook_dist), col = "red", lty = 2)
+```
+
+Em relação à Distância de Cook \$D_i\$, segundo Montgomery (2012), valores influentes preocupantes seriam de \$D_i \> 1\$.
+
+```{r}
+COVRATIO <- covratio(fit_completo)
+n <- nobs(fit_completo)
+p <- length(coef(fit_completo))
+
+lim_superior <- 1 + (3 * p / n)
+lim_inferior <- 1 - (3 * p / n)
+
+plot(COVRATIO,
+     main = "COVRATIO das Observações",
+     xlab = "i-ésima Observação", 
+     ylab = "COVRATIO")
+
+
+
+abline(h = 1, col = "gray", lty = 3)
+abline(h = lim_superior, col = "red", lty = 2)
+abline(h = lim_inferior, col = "red", lty = 2)
+```
+
+Como podemos ver pelos gráficos, apesar de alguns valores passarem das da marcas de referência, a magnitude da Distância de Cook está abaixo de \$0{,}035\$, bem longe do limite de 1. Ademais, os valores do COVRATIO continuam bem próximos de 1, tanto para baixo quanto para cima, o que é natural em um conjunto de dados reais do mercado imobiliário.
+
+Além disso, devido ao tamanho da amostra \$n \> 500\$, o Teorema Central do Limite garante a normalidade assintótica dos estimadores de Mínimos Quadrados, assegurando a confiabilidade do modelo.
 
 ## 4. Conclusão
 
