@@ -271,17 +271,25 @@ bind_rows(
   knitr::kable(digits = 4)
 ```
 
-Vale ressaltar que a escolha do modelo foi feita a partir da validação cruzada e que a conclusão por meio dos testes seria enviesada, pois a conclusão deixaria de ser independente do processo de seleção. Avaliamos todos os modelos para os dados de teste como uma verificação complementar. Nesse sentido, ajustamos o modelo escolhido na base de dados completa abaixo:
+Vale ressaltar que a escolha do modelo foi feita a partir da validação cruzada e que a conclusão por meio dos testes seria enviesada, pois a conclusão deixaria de ser independente do processo de seleção. Avaliamos todos os modelos para os dados de teste como uma verificação complementar.
+
+Nesse sentido, ajustamos o modelo escolhido na base de dados completa, comparando novamente os resíduos:
 
 ```{r}
 fit_completo <- fit(log_log_wflow, data = dados) |>
   extract_fit_engine()
 
 summary(fit_completo)
-#Rafael: Acho válido deixar mais claro a sáida do vif, e comentá-la
-vif(fit_completo)
 ggresiduals(fit_completo)
 ```
+
+Analisando a multicolinearidade:
+
+```{r}
+vif(fit_completo)
+```
+
+Como podemos ver, nenhum dos fatores de **Inflação da Variância** é superior a 10, logo não há presença de multicolinearidade que impacte de forma significativa nos estimadores do modelo.
 
 ### 3.1 Diagnóstico com Medidas de Influência
 
@@ -296,7 +304,7 @@ plot(cook_dist,
 abline(h = 4/length(cook_dist), col = "red", lty = 2)
 ```
 
-Em relação à Distância de Cook \$D_i\$, segundo Montgomery (2012), valores influentes preocupantes seriam de \$D_i \> 1\$.
+Em relação à Distância de Cook $D_i$, segundo Montgomery (2012), valores influentes preocupantes seriam de $D_i > 1$.
 
 ```{r}
 COVRATIO <- covratio(fit_completo)
@@ -320,11 +328,11 @@ abline(h = lim_inferior, col = "red", lty = 2)
 
 Como podemos ver pelos gráficos, apesar de alguns valores passarem das marcas de referência, a magnitude da Distância de Cook está abaixo de 0,035, bem longe do limite de 1. Ademais, os valores do COVRATIO continuam bem próximos de 1, tanto para baixo quanto para cima, o que é natural em um conjunto de dados reais do mercado imobiliário.
 
-Além disso, devido ao tamanho da amostra \$n \> 500\$, o Teorema Central do Limite garante a normalidade assintótica dos estimadores de Mínimos Quadrados, assegurando a confiabilidade do modelo.
+Além disso, devido ao tamanho da amostra $n > 500$, o Teorema Central do Limite garante a normalidade assintótica dos estimadores de Mínimos Quadrados, assegurando a confiabilidade do modelo.
 
 ## 4. Conclusão
 
-O modelo inicial, com o preço na escala original, apresentou heterocedasticidade, corrigida com a transformação logarítmica da resposta. Entre as especificações comparadas por validação cruzada, o stepwise com interações mostrou sobreajuste, e a interação entre entrada para carro e área preferencial se mostrou instável por depender de pouquíssimas casas. O modelo escolhido foi o aditivo com log do preço e log da área do lote. Reajustado com a base completa, ele explica 68% da variabilidade do log do preço (\$R\^2\$ ajustado de 0,680) e atende aos pressupostos de homocedasticidade, independência e ausência de outliers. O leve desvio de normalidade não compromete a inferência devido.
+O modelo inicial, com o preço na escala original, apresentou heterocedasticidade, corrigida com a transformação logarítmica da resposta. Entre as especificações comparadas por validação cruzada, o stepwise com interações mostrou sobreajuste, e a interação entre entrada para carro e área preferencial se mostrou instável por depender de pouquíssimas casas. O modelo escolhido foi o aditivo com log do preço e log da área do lote. Reajustado com a base completa, ele explica 68% da variabilidade do log do preço ($R^2$ ajustado de 0,680) e atende aos pressupostos de homocedasticidade, independência e ausência de outliers. O leve desvio de normalidade não compromete a inferência devido.
 
 Todas as covariáveis foram significativas ao nível de 5%. Mantidas as demais constantes, dobrar a área do lote eleva o preço em cerca de 23,4% (elasticidade de 0,303). Os maiores efeitos são os do aquecimento a gás (19,6%), do ar-condicionado central (18,1%), de cada banheiro adicional (18,0%) e da localização em bairro de alta preferência (14,1%). Também contribuem a entrada para carro (11,7%), o porão acabado (11,0%), cada andar adicional (9,6%), a sala de recreação (6,0%), cada vaga de garagem (4,9%) e cada quarto adicional (3,5%).
 
