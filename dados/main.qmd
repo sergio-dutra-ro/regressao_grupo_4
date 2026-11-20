@@ -293,7 +293,7 @@ Como podemos ver, nenhum dos fatores de **Inflação da Variância** é superior
 
 ### 3.1 Diagnóstico com Medidas de Influência
 
-Após a análise gráfica dos resíduos do modelo escolhido (`fit_completo`), decidimos medir o impacto da magnitude das observações isoladas na predição. Utilizamos abaixo as métricas da **Distância de Cook** e o **COVRATIO**:
+Após a análise gráfica dos resíduos do modelo escolhido (`fit_completo`), decidimos medir o impacto na predição da magnitude das observações isoladas . Utilizamos abaixo as métricas da **Distância de Cook** e o **COVRATIO**:
 
 ```{r}
 cook_dist <- cooks.distance(fit_completo)
