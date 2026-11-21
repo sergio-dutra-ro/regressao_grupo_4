@@ -37,7 +37,7 @@ knitr::kable(head(dados[, 1:6]))
 knitr::kable(head(dados[, 7:12]))
 ```
 
-O dataframe possui 12 variáveis com 546 observações, como visualiza-se abaixo os detalhes:
+O dataframe possui 12 variáveis com 546 observações, como visualizam-se abaixo os detalhes:
 
 ```{r}
 glimpse(dados)
@@ -112,7 +112,7 @@ Corrobora-se, dessa maneira, que os dados estão bem estruturados, com o domíni
 ## 3. Modelagem
 
 Nossa modelagem tem como objetivo prever o valor que uma casa será vendida, baseando-se nas demais variáveis.\
-Para o primeiro passo, dividimos os dados entre treino e teste, de forma que os dados de teste não foram utilizados nos treinamentos, afim de avaliar o poder de previsão dos modelos ajustados fora dos dados de treinamento.
+Para o primeiro passo, dividimos os dados entre treino e teste, de forma que os dados de teste não foram utilizados nos treinamentos, a fim de avaliar o poder de previsão dos modelos ajustados fora dos dados de treinamento.
 
 ```{r}
 #| echo: true
@@ -129,7 +129,7 @@ lm_model <- linear_reg() |>
 
 ```
 
-O primeiro modelo que ajustamos foi um modelo que utilizava todas as covariáveis para a regressão.
+O primeiro modelo que ajustamos foi aquele que utilizava todas as covariáveis para a regressão.
 
 ```{r}
 #| echo: true
@@ -138,7 +138,7 @@ summary(fit1)
 ggresiduals(fit1)
 ```
 
-Analisando os gráficos da função `ggresiduals`, percebemos que as suposições de normalidade dos dados e homocedasticidade da variância foram violadas, então investigamos a distribuição dos preços.
+Analisando os gráficos da função `ggresiduals`, percebemos que as suposições de normalidade dos dados e de homocedasticidade da variância foram violadas, então investigamos a distribuição dos preços.
 
 ```{r}
 p1 <- ggplot(dados, aes(x = preco)) + 
@@ -159,9 +159,9 @@ summary(fit2)
 ggresiduals(fit2)
 ```
 
-Ao analisar os gráficos, é possível ver que a violação da homocedasticidade da variância foi corrigida, entretanto continua havendo uma leve violação na normalidade dos erros, após investigar, encontramos um conjunto de covariáveis que ao serem removidas melhoravam o gráfico Normal Q-Q (`andares`, `entrada_carro`).
+Ao analisar os gráficos, é possível ver que a violação da homocedasticidade da variância foi corrigida, entretanto continua havendo uma leve violação na normalidade dos erros, após investigar, encontramos um conjunto de covariáveis (`andares`, `entrada_carro`) cuja remoção melhorava o gráfico Normal Q-Q.
 
-Todavia, como já era possível dizer que os erros seguiam uma distribuição aproximadamente normal, junto com o tamanho amostral $n$ grande, e essas variáveis foram dadas com relevantes para a regressão devido ao teste realizado pela função `anova`(indicando que carregam informação relevante sobre a variação do preço), optamos por mantê-las.
+Todavia, como já era possível dizer que os erros seguiam uma distribuição aproximadamente normal, junto com o tamanho amostral $n$ grande, e como o teste realizado pela função `anova` indicou que as covariáveis `andares` e `entrada_carro` carregam informação relevante sobre a variação do preço das casas, optamos por mantê-las.
 
 ```{r}
 #| echo: false
@@ -289,11 +289,11 @@ Analisando a multicolinearidade:
 vif(fit_completo)
 ```
 
-Como podemos ver, nenhum dos fatores de **Inflação da Variância** é superior a 10, logo não há presença de multicolinearidade que impacte de forma significativa nos estimadores do modelo.
+Como podemos ver, nenhum dos fatores de Inflação da Variância é superior a 10, logo não há presença de multicolinearidade que impacte de forma significativa os estimadores do modelo.
 
 ### 3.1 Diagnóstico com Medidas de Influência
 
-Após a análise gráfica dos resíduos do modelo escolhido (`fit_completo`), decidimos medir o impacto na predição da magnitude das observações isoladas . Utilizamos abaixo as métricas da **Distância de Cook** e o **COVRATIO**:
+Após a análise gráfica dos resíduos do modelo escolhido (`fit_completo`), decidimos medir como a magnitude das observações isoladas impactam na predição. Utilizamos abaixo as métricas da Distância de Cook e o COVRATIO:
 
 ```{r}
 cook_dist <- cooks.distance(fit_completo)
